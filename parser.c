@@ -6,104 +6,64 @@
 /*   By: hmiso <hmiso@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/10/27 16:56:20 by hmiso             #+#    #+#             */
-/*   Updated: 2020/10/29 17:10:09 by hmiso            ###   ########.fr       */
+/*   Updated: 2020/10/30 19:28:27 by hmiso            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishel.h"
 
-void		ft_pipe(char **comand)
+char	**ft_join_mas(char *str1, char *str2)
 {
-	int 	pipefd[2];
-	int		i;
-	int		k;
-	int		j;
-	pid_t	pid;
-	pid_t	pid2;
-	char	**argv1;
-	char	**argv2;
-	int 	status;
-	i = 0;
-	j = 0;
-	while(ft_strncmp(comand[i], "|", 1) != 0)
+	char **mas;
+
+	mas = malloc(sizeof(char *) * 3);
+	mas[0] = ft_strdup(str1);
+	mas[1] = ft_strdup(str2);
+	mas[2] = NULL;
+	return mas;
+}
+
+void	check_pipe(char **comand_mas, t_vars *vars)
+{
+	int i = 0;
+	vars->count_pipe = 0;
+	
+	while(comand_mas[i] != NULL)
 	{
+		if(ft_strncmp(comand_mas[i], "|", 1) == 0)
+		{
+			vars->count_pipe++;
+		}
 		i++;
 	}
-	argv1 = malloc(sizeof(char *) * (i + 1));
-	while(j < i)
-	{
-		argv1[j] = ft_strdup(comand[j]);
-		j++;
-	}
-	argv1[j] = NULL;
-	j = i;
-	while(comand[i] != NULL)
-	{
-		i++;
-	}
-	k = i - j;
-	j = 0;
-	argv2 = malloc(sizeof(char *) * (k));
-	while(k < i)
-	{
-		argv2[j] = ft_strdup(comand[k]);
-		j++;
-		k++;
-	}
-	argv2[j] = NULL;
-	pipe(pipefd);
-	pid = fork();
-	if (pid == 0)
-	{
-		close(pipefd[PIPE_READ]);
-		dup2(pipefd[PIPE_WRITE], 1);
-		close(pipefd[PIPE_WRITE]);
-		if ((status = execve(ft_strjoin("/bin/", argv1[0]), argv1, NULL)) == -1)
+}
+
+void    ft_pipe(char *path, char **comand, t_vars *vars)
+{
+    pid_t pid;
+    int mas[2];
+    int status;
+    int i;
+    pipe(mas);
+    pid = fork();
+    if (pid == 0)
+    {
+        close(mas[0]);
+        dup2(mas[1], 1);
+        close(mas[1]);
+		if ((status = execve(path, comand, vars->envp_copy)) == -1)
 			exit(WEXITSTATUS(status));
-		exit(status);	
-	}
+    }
 	else if (pid < 0)
 		ft_putendl_fd("error", 2);
 	else
-	{
-		//pid2 = fork();
-		// if (pid2 == 0)
-		// {
-		// 	dup2(pipefd[PIPE_WRITE], 1);
-		// 	close(pipefd[PIPE_READ]);			
-		// 	if ((status = execve(ft_strjoin("/bin/", argv1[0]), argv1, NULL)) == -1)
-		// 		exit(WEXITSTATUS(status));
-		// 	close(pipefd[PIPE_WRITE]);			
-		//}
-		close(pipefd[PIPE_WRITE]);
-		dup2(pipefd[PIPE_READ], 0);
-		close(pipefd[PIPE_READ]);		
-		waitpid(pid, &status, WUNTRACED);
+    {
+        close(mas[1]);
+        dup2(mas[0], 0);
+        close(mas[0]);
+        waitpid(pid, &status, WUNTRACED);
 		g_exit_code = WEXITSTATUS(status);
-	}
-	pid = fork();
-	if (pid == 0)
-	{
-		if ((status = execve(ft_strjoin("/bin/", argv2[0]), argv2, NULL)) == -1)
-			exit(WEXITSTATUS(status));
-		exit(status);	
-	}
-	else if (pid < 0)
-		ft_putendl_fd("error", 2);
-	else
-	{
-		//pid2 = fork();
-		// if (pid2 == 0)
-		// {
-		// 	dup2(pipefd[PIPE_WRITE], 1);
-		// 	close(pipefd[PIPE_READ]);			
-		// 	if ((status = execve(ft_strjoin("/bin/", argv1[0]), argv1, NULL)) == -1)
-		// 		exit(WEXITSTATUS(status));
-		// 	close(pipefd[PIPE_WRITE]);			
-		//}		
-		waitpid(pid, &status, WUNTRACED);
-		g_exit_code = WEXITSTATUS(status);
-	}	
+    }
 }
 
 char		*init_patch(t_vars *vars, char *arg) // возвращает значение переменной env
@@ -167,15 +127,13 @@ void		envp_copy(char **envp, t_vars *vars)//создание копии пере
 	vars->count_envp = i - 1;
 }
 
-int			system_funk(char *path, char *line, t_vars *vars)//вызов системных функций
+int			system_funk(char *path, char **argv, t_vars *vars)//вызов системных функций
 {
-	char **argv;
 	int count;
 	int status;
 	pid_t pid;
 	int i = 0;
 	int j = 0;
-	argv = ft_split(line, ' ');
 	char *ptr;
 	ptr = ft_strjoin(path, "/");
 	ptr = ft_strjoin(ptr, argv[0]);
@@ -223,7 +181,8 @@ int			check_system_funk(t_vars *vars, char *str) // проверяет нали�
 			{
 				if ((ft_strncmp(st->d_name, str, ft_strlen(argv[0]))) == 0)
 				{
-					system_funk(path[i], str, vars);
+					char **str2= ft_split(str, ' ');
+					system_funk(path[i], str2, vars);
 					flag = 1;
 				}
 			}
@@ -237,14 +196,55 @@ void		ft_pars_argument(char *line, t_vars *vars)
 {
 	char **comand_mas = ft_split(line, ' ');
 	int i = 0;
-	// while(comand_mas[i] != NULL)
-	// {
-	// 	check_system_funk(vars, &line[i]);
-	// 	i++;
-	// }
-	ft_pipe(comand_mas);
-	dup2(vars->save_std_in, 0);
-	dup2(vars->save_std_out, 1);
+	char **comand_to_pipe;
+	check_pipe(comand_mas, vars);
+	if (vars->count_pipe > 0)
+	{
+		while(comand_mas[i] != NULL)
+		{
+			if ((ft_strncmp(comand_mas[i], "|", 1) == 0) && (vars->count_pipe > 1))
+			{
+				if(comand_mas[i - 1][0] == '-')
+				{
+					comand_to_pipe = ft_join_mas(comand_mas[i - 2], comand_mas[i - 1]);
+					ft_pipe(init_patch(vars, "PATH"), comand_to_pipe, vars);
+				}
+				if(comand_mas[i + 2][0] == '-')
+				{
+					comand_to_pipe = ft_join_mas(comand_mas[i + 1], comand_mas[i + 2]);
+					ft_pipe(init_patch(vars, "PATH"), comand_to_pipe, vars);
+					i+= 2;
+				}
+				vars->count_pipe--;
+				i++;
+			}
+			if ((ft_strncmp(comand_mas[i], "|", 1) == 0) && (vars->count_pipe == 1))
+			{
+				if(comand_mas[i - 1][0] == '-')
+				{
+					comand_to_pipe = ft_join_mas(comand_mas[i - 2], comand_mas[i - 1]);
+					ft_pipe("/bin/ls", comand_to_pipe, vars);
+				}
+				comand_to_pipe = ft_join_mas(comand_mas[i + 1], comand_mas[i + 2]);
+				check_system_funk(vars, comand_to_pipe);
+				vars->count_pipe--;
+				i+= 2;
+			}
+			i++;		
+		}
+	}
+	else 
+	{
+		while(comand_mas[i] != NULL)
+		{
+			if (check_system_funk(vars, &line[i]) > 0)
+				i++;
+			else if (ft_strncmp(comand_mas[i], "exit", 5) == 0)
+			{
+				exit(0);
+			}
+		}
+	}
 }
 
 int main(int argc, char **argv, char **envp)
@@ -253,8 +253,6 @@ int main(int argc, char **argv, char **envp)
 	char *ptr;
 	char *line = NULL;
 	struct dirent *dir;
-	vars.save_std_in = dup(0);
-	vars.save_std_out = dup(1);
 	envp_copy(envp, &vars);
 	ft_putstr_fd("minishell>", 1);
 	while(get_next_line(0, &line))
@@ -264,7 +262,5 @@ int main(int argc, char **argv, char **envp)
 		line = NULL;
 		ft_putstr_fd("minishell>", 1);
 	}
-	dup2(vars.save_std_in, 0);
-	dup2(vars.save_std_out, 1);	
 	return 0;
 }

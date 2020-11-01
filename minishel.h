@@ -6,7 +6,7 @@
 /*   By: hmiso <hmiso@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/10/08 16:55:07 by hmiso             #+#    #+#             */
-/*   Updated: 2020/10/29 20:47:49 by hmiso            ###   ########.fr       */
+/*   Updated: 2020/10/31 17:58:31 by hmiso            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,9 @@ int			count_envp;
 char        *path;
 int			save_std_in;
 int			save_std_out;
+int			count_pipe;
+int			count_comand;
+int			index_pipe;
 }				t_vars;
 
 void		free_two_dimensional_array(char **arr);

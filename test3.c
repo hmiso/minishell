@@ -1,3 +1,4 @@
+
 #include "minishel.h"
 
 void    ft_pipe(char *path, char **comand, t_vars *vars)
@@ -12,7 +13,7 @@ void    ft_pipe(char *path, char **comand, t_vars *vars)
         close(mas[0]);
         dup2(mas[1], 1);
         close(mas[1]);
-        i = execve(path, comand, vars->envp_copy);
+        i = execve(path, comand, NULL);
         exit(0);
     }
     else
@@ -34,9 +35,8 @@ int main()
     int i;
     ft_pipe("/bin/ls", comand, &vars);
     ft_pipe("/bin/cat", comand2, &vars);
-    pipe(mas);
     pid = fork();
-    if(pid ==0)
+    if(pid == 0)
     {
         i = execve("/bin/cat", comand2, NULL);
         exit(i);
